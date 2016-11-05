@@ -1,0 +1,5 @@
+
+ccflags += $cxx_symbols
+
+build objects(.build/*): auto *.c || *.h
+build application(.build/app): auto objects(.build/*)
