@@ -10,13 +10,27 @@ Lightweight entry point for games.
 
 So let's take TIGR as a baseline, offload all rendering part to something like [bgfx](https://github.com/bkaradzic/bgfx) and add iOS/Android support.
 
-### Status
+### Supported platforms
 
-- WIP
+- Windows
+- macOS
+- iOS
+
+### TODO
+
+- GamePad input
+- Mouse wheel
+- iOS keyboard (at least partially)
+- MessageBox/allert
+- Android
+- Emscripten
+- X11
+- Wayland
+- Small casual OpenGL renderer
 
 ### Additional
 
-This library loosely based on TIGR.
+This library very loosely based on TIGR.
 
 	// TIGR - TIny GRaphics Library - v1.3
 	//        ^^   ^^
@@ -35,4 +49,3 @@ This library loosely based on TIGR.
 	The software is provided "as is", without any kind of warranty, including
 	any implied warranty. If it breaks, you get to keep both pieces.
 	*/
-

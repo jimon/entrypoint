@@ -48,5 +48,16 @@
 #define ENTRYPOINT_MACOS_START_Y	20
 
 // -----------------------------------------------------------------------------
+// iOS
 
-#define ENTRYPOINT_CTX // TODO remove
+// if you wish we can provide an app delegate for you, it will have UIWindow->UIViewController->UIView with your game
+// and the name of app delegate class will be EntryPointAppDelegate
+// but please remember that you will need to provide either launch image or launch storyboard to get proper size viewport
+// otherwise iOS will think like this is iPhone4 app and will limit your screensize
+#define ENTRYPOINT_IOS_APPDELEGATE
+
+// if you would like we can define a main for you, just please provide us with your app delegate class name as a string
+#define ENTRYPOINT_IOS_MAIN
+#define ENTRYPOINT_IOS_MAIN_APPDELEGATE_CLASSNAME @"EntryPointAppDelegate"
+
+// -----------------------------------------------------------------------------

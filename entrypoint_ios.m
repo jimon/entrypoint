@@ -1,0 +1,263 @@
+
+#define ENTRYPOINT_CTX
+#include "entrypoint.h"
+
+#if defined(__APPLE__) && TARGET_OS_IOS
+#if !__has_feature(objc_arc)
+  #error hey, we need ARC here
+#endif
+
+#import "entrypoint_ios.h"
+
+static entrypoint_ctx_t ctx = {0};
+entrypoint_ctx_t * ep_ctx() {return &ctx;}
+
+// -----------------------------------------------------------------------------
+
+@interface EntryPointView ()
+{
+	CADisplayLink* m_displayLink;
+}
+- (void)start;
+- (void)stop;
+- (void)tick;
+
+#ifdef ENTRYPOINT_PROVIDE_INPUT
+- (void)onTouch:(UIEvent *)event;
+#endif
+@end
+
+@implementation EntryPointView
+
++ (Class)layerClass
+{
+	return [CAEAGLLayer class];
+}
+
+- (void)commonInit
+{
+	ctx.view = (__bridge void *)(self);
+	ctx.caeagllayer = (__bridge void *)(self.layer);
+	
+	if(entrypoint_init(ctx.argc, ctx.argv) != 0)
+	{
+		NSLog(@"failed to init entrypoint");
+		ctx.flag_failed_to_init = 1;
+	}
+	else
+		ctx.flag_failed_to_init = 0;
+	
+	
+	self.contentScaleFactor = [UIScreen mainScreen].scale;
+	
+}
+
+- (id)initWithFrame:(CGRect)rect
+{
+	if ((self = [super initWithFrame:rect]))
+		[self commonInit];
+	return self;
+}
+
+- (id)initWithCoder:(NSCoder*)coder
+{
+	if ((self = [super initWithCoder:coder]))
+		[self commonInit];
+	return self;
+}
+
+- (void)dealloc
+{
+	if(entrypoint_deinit() != 0)
+	{
+		NSLog(@"failed to deinit entrypoint"); // not much we can do here
+	}
+}
+
+- (void)layoutSubviews
+{
+	ctx.view_w = (uint16_t)(self.contentScaleFactor * self.frame.size.width);
+	ctx.view_h = (uint16_t)(self.contentScaleFactor * self.frame.size.height);
+}
+
+- (void)start
+{
+	if(m_displayLink == nil)
+	{
+		ctx.flag_anim = 1;
+		m_displayLink = [self.window.screen displayLinkWithTarget:self selector:@selector(tick)];
+		[m_displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+	}
+}
+
+- (void)stop
+{
+	if(m_displayLink != nil)
+	{
+		ctx.flag_anim = 0;
+		[m_displayLink invalidate];
+		m_displayLink = nil;
+		entrypoint_might_unload();
+	}
+}
+
+- (void)tick
+{
+	if(!ctx.flag_failed_to_init && ctx.flag_anim)
+	{
+		if(entrypoint_loop() != 0)
+			[self stop]; // an iOS app cannot force itself to close under normal UX flows
+	}
+}
+
+#ifdef ENTRYPOINT_PROVIDE_INPUT
+- (void)onTouch:(UIEvent *)event
+{
+	UITouch * touch = [[event allTouches] anyObject];
+	CGPoint touchLocation = [touch locationInView:self];
+	ctx.touch.x = self.contentScaleFactor * touchLocation.x;
+	ctx.touch.y = self.contentScaleFactor * touchLocation.y;
+}
+
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+	[self onTouch:event];
+	ctx.touch.left = 1;
+}
+
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+{
+	[self onTouch:event];
+	ctx.touch.left = 0;
+}
+
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+	[self onTouch:event];
+}
+
+- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
+{
+	[self onTouch:event];
+	ctx.touch.left = 0;
+}
+#endif
+
+@end
+
+// -----------------------------------------------------------------------------
+
+void ep_anim_start()
+{
+	if(ctx.view)
+		[(__bridge EntryPointView*)ctx.view start];
+}
+
+void ep_anim_stop()
+{
+	if(ctx.view)
+		[(__bridge EntryPointView*)ctx.view stop];
+}
+
+// -----------------------------------------------------------------------------
+
+ep_size_t ep_size()
+{
+	ep_size_t r;
+	r.w = ctx.view_w;
+	r.h = ctx.view_h;
+	return r;
+}
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_PROVIDE_TIME
+
+double ep_time()
+{
+	if(ctx.timebase_info.denom == 0)
+	{
+		mach_timebase_info(&ctx.timebase_info);
+		ctx.prev_time = mach_absolute_time();
+		return 0.0f;
+	}
+
+	uint64_t current_time = mach_absolute_time();
+	double elapsed = (double)(current_time - ctx.prev_time) * ctx.timebase_info.numer / (ctx.timebase_info.denom * 1000000000.0);
+	ctx.prev_time = current_time;
+	return elapsed;
+}
+
+void ep_sleep(double seconds)
+{
+	usleep((useconds_t)(seconds * 1000000.0));
+}
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_PROVIDE_INPUT
+
+void ep_touch(ep_touch_t * touch)
+{
+	if(touch)
+		*touch = ctx.touch;
+}
+
+bool ep_khit(int32_t key) {return false;}
+bool ep_kdown(int32_t key) {return false;}
+uint32_t ep_kchar() {return 0;}
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_IOS_APPDELEGATE
+
+@interface EntryPointViewController : UIViewController
+@property (strong, nonatomic) EntryPointView * view;
+@end
+@implementation EntryPointViewController
+@dynamic view;
+- (void)loadView { self.view = [[EntryPointView alloc] initWithFrame:UIScreen.mainScreen.bounds]; }
+@end
+
+// TODO sometimes it complains on "[App] if we're in the real pre-commit handler we can't actually add any new fences due to CA restriction"
+@interface EntryPointAppDelegate : UIResponder <UIApplicationDelegate>
+@property (strong, nonatomic) UIWindow * window;
+@end
+@implementation EntryPointAppDelegate
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+ 	self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+	[self.window makeKeyAndVisible];
+	self.window.rootViewController = [[EntryPointViewController alloc] init];
+	return YES;
+}
+- (void)applicationWillResignActive:(UIApplication *)application { ep_anim_stop(); }
+- (void)applicationDidEnterBackground:(UIApplication *)application { ep_anim_stop(); }
+- (void)applicationWillEnterForeground:(UIApplication *)application { ep_anim_start(); }
+- (void)applicationDidBecomeActive:(UIApplication *)application { ep_anim_start(); }
+- (void)applicationWillTerminate:(UIApplication *)application { ep_anim_stop(); }
+@end
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_IOS_MAIN
+
+int main(int argc, char * argv[])
+{
+	ctx.argc = argc;
+	ctx.argv = argv;
+	@autoreleasepool
+	{
+		return UIApplicationMain(argc, argv, nil, ENTRYPOINT_IOS_MAIN_APPDELEGATE_CLASSNAME);
+	}
+}
+
+#endif
+
+#endif

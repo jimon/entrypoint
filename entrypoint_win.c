@@ -190,28 +190,7 @@ LRESULT CALLBACK tigrWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	return DefWindowProcW(hWnd, message, wParam, lParam);
 }
 
-uint32_t ep_poll()
-{
-	#ifdef ENTRYPOINT_PROVIDE_INPUT
-		memcpy(ctx.prev, ctx.keys, sizeof(ctx.prev));
-	#endif
-
-	MSG msg;
-	while(PeekMessage(&msg, ctx.hwnd, 0, 0, PM_REMOVE))
-	{
-		if(msg.message == WM_QUIT)
-		{
-			ctx.flag_want_to_close = 1;
-			break;
-		}
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-
-	GetClientRect(ctx.hwnd, &ctx.rect);
-
-	return ctx.flag_want_to_close ? 0 : 1;
-}
+// -----------------------------------------------------------------------------
 
 ep_size_t ep_size()
 {
@@ -260,6 +239,28 @@ static void _freeargs(){}
 #endif
 
 // -----------------------------------------------------------------------------
+
+static int32_t _freewindow(int32_t errorcode)
+{
+	if(!DestroyWindow(ctx.hwnd))
+	{
+		_fail("destroy window");
+		_freeargs();
+		return 1;
+	}
+
+	ctx.hwnd = 0;
+
+	if(!UnregisterClassW(ENTRYPOINT_WINDOWS_CLASS, GetModuleHandle(NULL)))
+	{
+		_fail("unregister class");
+		_freeargs();
+		return 1;
+	}
+
+	_freeargs();
+	return errorcode;
+}
 
 #ifdef ENTRYPOINT_WINDOWS_WINMAIN
 #ifdef UNICODE
@@ -319,26 +320,47 @@ int main(int argc, char * argv[])
 	SetForegroundWindow(ctx.hwnd);
 	SetFocus(ctx.hwnd);
 
-	int result_code = entrypoint(ctx.argc, ctx.argv);
-
-	if(!DestroyWindow(ctx.hwnd))
+	int32_t result_code = 0;
+	if((result_code = entrypoint_init(ctx.argc, ctx.argv)) != 0)
 	{
-		_fail("destroy window");
-		_freeargs();
-		return 1;
+		_fail("entrypoint init");
+		return _freewindow(result_code);
 	}
 
-	ctx.hwnd = 0;
-
-	if(!UnregisterClassW(ENTRYPOINT_WINDOWS_CLASS, GetModuleHandle(NULL)))
+	while(entrypoint_loop() == 0 && ctx.flag_want_to_close == false)
 	{
-		_fail("unregister class");
-		_freeargs();
-		return 1;
+		#ifdef ENTRYPOINT_PROVIDE_INPUT
+		memcpy(ctx.prev, ctx.keys, sizeof(ctx.prev));
+		#endif
+
+		MSG msg;
+		while(PeekMessage(&msg, ctx.hwnd, 0, 0, PM_REMOVE))
+		{
+			if(msg.message == WM_QUIT)
+			{
+				ctx.flag_want_to_close = 1;
+				break;
+			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+
+		GetClientRect(ctx.hwnd, &ctx.rect);
 	}
 
-	_freeargs();
-	return result_code;
+	if((result_code = entrypoint_might_unload()) != 0)
+	{
+		_fail("entrypoint might unload");
+		return _freewindow(result_code);
+	}
+
+	if((result_code = entrypoint_deinit()) != 0)
+	{
+		_fail("entrypoint deinit");
+		return _freewindow(result_code);
+	}
+
+	return 0;
 }
 
 #endif

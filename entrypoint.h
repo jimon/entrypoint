@@ -1,13 +1,17 @@
 // lightweight entry point for games
 //
 // how to use:
-// - instead of main(...) use int entrypoint(int argc, char * argv[]) in your app
+// - instead of main(...) use int entrypoint_init(int argc, char * argv[]) in your app
 // - when you will get control, expect a window to be created and valid
-// - call ep_poll from your main loop, please use emscripten_set_main_loop for emscripten
+// - don't create run loop on your own (it's simply not possible on some platforms)
+// - instead provide entrypoint_loop for loop tick (do updating and rendering there)
+// - add entrypoint_deinit for loop finish, but don't expect it to be called on all platforms
+// - to save critical data implement entrypoint_might_unload
 //
 // so yes:
-// - this lib does overrides main :( this is needed because of platforms like Andriod and iOS
-// - on platforms like emscripten there is no system window to begin with
+// - this lib does overrides main :(
+// - this lib does take control over runloop
+// - but hey, on platforms like iOS, Android and Emscripten you don't normally have it anyway
 
 #pragma once
 
@@ -20,14 +24,30 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
+// please implement this functions in your code
 
-// !!! please define this function in your code !!!
-int32_t entrypoint(int32_t argc, char * argv[]);
+// initialize your application, returns error code, 0 is ok, != 0 if failure
+int32_t entrypoint_init(int32_t argc, char * argv[]);
 
-// call this function in your main loop
-// > 0 means everything is ok
-// = 0 means we want to exit or there is an error
-uint32_t ep_poll();
+// deinitialize your application, returns error code, 0 is ok, != 0 if failure
+// don't rely on this to be called because it's not feasible on some platforms
+int32_t entrypoint_deinit();
+
+// will be called if we application goes into background and might be terminated there
+// aka "applicationWillResignActive" and "beforeunload"
+// you should save you critical data here as fast as possible, and please don't block
+int32_t entrypoint_might_unload();
+
+// frame tick for your application, 0 is ok, != 0 if want to close the application
+// depending on a platform might be called as fast as possible, or connected to VSYNC
+int32_t entrypoint_loop();
+
+// -----------------------------------------------------------------------------
+
+// you can get all platform handles from ctx
+// see entrypoint_ctx_t definition at the bottom of this file
+typedef struct entrypoint_ctx_t entrypoint_ctx_t;
+entrypoint_ctx_t * ep_ctx();
 
 // get size of the window
 typedef struct ep_size_t {uint16_t w, h;} ep_size_t;
@@ -63,6 +83,7 @@ typedef struct
 		};
 	};
 	// TODO mouse wheel, additional buttons
+	// TODO support mutlitouch on iOS
 } ep_touch_t;
 void ep_touch(ep_touch_t * touch);
 
@@ -104,13 +125,17 @@ uint32_t ep_kchar();
 	#include <TargetConditionals.h>
 	#include <mach/mach_time.h>
 
-// use the following:
-// TARGET_IPHONE_SIMULATOR
-// TARGET_OS_IPHONE
-// TARGET_OS_MAC
+	// use the following:
+	// TARGET_OS_IPHONE
+	// TARGET_OS_OSX
+
+	#ifndef TARGET_OS_OSX
+		//#warning TARGET_OS_OSX is not available, simulating it
+		#define TARGET_OS_OSX (!(TARGET_OS_IOS || TARGET_OS_TV || TARGET_OS_WATCH))
+	#endif
 #endif
 
-typedef struct entrypoint_ctx_t
+struct entrypoint_ctx_t
 {
 	// -------------------------------------------------------------------------
 	// arguments
@@ -149,16 +174,29 @@ typedef struct entrypoint_ctx_t
 				#endif
 			};
 		};
-	#elif __APPLE__
-
-		void * window; // NSWindow
-
-		uint32_t window_count;
-		bool terminated ;
+	#elif defined(__APPLE__)
+		#if TARGET_OS_OSX
+			void * window; // NSWindow
+			uint32_t window_count;
+			bool terminated;
+		#elif TARGET_OS_IOS
+			void * view; // EntryPointView: UIView
+			void * caeagllayer; // EntryPointView.layer
+			uint16_t view_w, view_h;
+			union
+			{
+				uint8_t flags;
+				struct
+				{
+					uint8_t flag_failed_to_init: 1;
+					uint8_t flag_anim: 1;
+				};
+			};
+		#endif
 
 		#ifdef ENTRYPOINT_PROVIDE_TIME
-		uint64_t prev_time;
-		mach_timebase_info_data_t timebase_info;
+			uint64_t prev_time;
+			mach_timebase_info_data_t timebase_info;
 		#endif
 	#endif
 
@@ -166,19 +204,14 @@ typedef struct entrypoint_ctx_t
 	// input
 
 	#ifdef ENTRYPOINT_PROVIDE_INPUT
-
-	uint32_t last_char;
-	char keys[256], prev[256];
-	#if defined(__APPLE__) && defined(TARGET_OS_MAC)
-	ep_touch_t touch;
+		uint32_t last_char;
+		char keys[256], prev[256];
+		#ifdef __APPLE__
+			ep_touch_t touch;
+		#endif
 	#endif
 
-	#endif
-
-} entrypoint_ctx_t;
-
-// you can get all platform handles from ctx
-entrypoint_ctx_t * ep_ctx();
+};
 
 #endif
 
