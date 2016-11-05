@@ -193,8 +193,6 @@ LRESULT CALLBACK tigrWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 uint32_t ep_poll()
 {
 	#ifdef ENTRYPOINT_PROVIDE_INPUT
-		if(ctx.keys[VK_ESCAPE])
-			ctx.flag_want_to_close = 1;
 		memcpy(ctx.prev, ctx.keys, sizeof(ctx.prev));
 	#endif
 

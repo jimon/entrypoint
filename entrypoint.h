@@ -93,8 +93,16 @@ uint32_t ep_kchar();
 #ifdef ENTRYPOINT_CTX
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+	#define WIN32_LEAN_AND_MEAN
+	#include <windows.h>
+#elif __APPLE__
+	#include <TargetConditionals.h>
+	#include <mach/mach_time.h>
+
+// use the following:
+// TARGET_IPHONE_SIMULATOR
+// TARGET_OS_IPHONE
+// TARGET_OS_MAC
 #endif
 
 typedef struct entrypoint_ctx_t
@@ -109,36 +117,45 @@ typedef struct entrypoint_ctx_t
 	// platform stuff
 
 	#ifdef _WIN32
-	// entry point data:
-	// - hInstance is GetModuleHandle(0)
-	// - hPrevInstance is always NULL
-	// - lpCmdLine can be get as GetCommandLineA()
-	// - nCmdShow is wShowWindow in GetStartupInfoA(STARTUPINFOA*)
+		// entry point data:
+		// - hInstance is GetModuleHandle(0)
+		// - hPrevInstance is always NULL
+		// - lpCmdLine can be get as GetCommandLineA()
+		// - nCmdShow is wShowWindow in GetStartupInfoA(STARTUPINFOA*)
 
-	HWND hwnd; // window handle
-	RECT rect; // current window rect
-	RECT rect_saved; // saved window rect (for fullscreen<->windowed transitions)
-	DWORD dwStyle; // current window style
+		HWND hwnd; // window handle
+		RECT rect; // current window rect
+		RECT rect_saved; // saved window rect (for fullscreen<->windowed transitions)
+		DWORD dwStyle; // current window style
 
-	#ifdef ENTRYPOINT_PROVIDE_TIME
-	LARGE_INTEGER prev_qpc_time;
-	#endif
+		#ifdef ENTRYPOINT_PROVIDE_TIME
+		LARGE_INTEGER prev_qpc_time;
+		#endif
 
-	union
-	{
-		uint8_t flags;
-		struct
+		union
 		{
-			uint8_t flag_want_to_close: 1;
-			uint8_t flag_borderless: 1;
-			#ifdef ENTRYPOINT_PROVIDE_TIME
-			uint8_t flag_time_set: 1;
-			#endif
+			uint8_t flags;
+			struct
+			{
+				uint8_t flag_want_to_close: 1;
+				uint8_t flag_borderless: 1;
+				#ifdef ENTRYPOINT_PROVIDE_TIME
+				uint8_t flag_time_set: 1;
+				#endif
+			};
 		};
-	};
-
+	#elif __APPLE__
+	
+		void * window; // NSWindow
+	
+		uint32_t window_count;
+		bool terminated ;
+	
+		#ifdef ENTRYPOINT_PROVIDE_TIME
+		uint64_t prev_time;
+		mach_timebase_info_data_t timebase_info;
+		#endif
 	#endif
-
 
 	// -------------------------------------------------------------------------
 	// input
@@ -147,9 +164,9 @@ typedef struct entrypoint_ctx_t
 
 	uint32_t last_char;
 	char keys[256], prev[256];
-	//#ifdef __APPLE__
-	//int mouseButtons;
-	//#endif
+	#if defined(__APPLE__) && defined(TARGET_OS_MAC)
+	ep_touch_t touch;
+	#endif
 
 	#endif
 

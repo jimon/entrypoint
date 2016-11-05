@@ -38,5 +38,15 @@
 //#define ENTRYPOINT_WINDOWS_DO_WMPAINT
 
 // -----------------------------------------------------------------------------
+// macOS
+
+#define ENTRYPOINT_MACOS_PREPARE_PARAMS {}
+#define ENTRYPOINT_MACOS_TITLE		@"test window"
+#define ENTRYPOINT_MACOS_WIDTH		1024
+#define ENTRYPOINT_MACOS_HEIGHT		768
+#define ENTRYPOINT_MACOS_START_X	20
+#define ENTRYPOINT_MACOS_START_Y	20
+
+// -----------------------------------------------------------------------------
 
 #define ENTRYPOINT_CTX // TODO remove

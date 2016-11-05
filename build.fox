@@ -1,5 +1,12 @@
 
 ccflags += $cxx_symbols
 
+filter system: Darwin
+	frameworks += Cocoa OpenGL
+	ccflags += -fobjc-arc
+
 build objects(.build/*): auto *.c || *.h
+filter system: Darwin
+	build objects(.build/*): cc *.m || *.h
+
 build application(.build/app): auto objects(.build/*)

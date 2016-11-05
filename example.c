@@ -1,5 +1,6 @@
 
 #include "entrypoint.h"
+#include <stdio.h>
 
 int32_t entrypoint(int32_t argc, char * argv[])
 {
@@ -16,11 +17,14 @@ int32_t entrypoint(int32_t argc, char * argv[])
 		uint32_t k = ep_kchar();
 		if(k)
 			printf("key %u\n", k);
+		
+		if(ep_kdown(EK_ESCAPE))
+			break;
 		#endif
 
 		#ifdef ENTRYPOINT_PROVIDE_TIME
-		printf("dt %f\n", ep_time());
-		ep_sleep(0.05f);
+//		printf("dt %f\n", ep_time());
+		ep_sleep(0.016f);
 		#endif
 	}
 
