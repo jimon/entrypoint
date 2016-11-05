@@ -213,6 +213,15 @@ uint32_t ep_poll()
 	return ctx.flag_want_to_close ? 0 : 1;
 }
 
+ep_size_t ep_size()
+{
+	ep_size_t r;
+	GetClientRect(ctx.hwnd, &ctx.rect);
+	r.w = ctx.rect.right - ctx.rect.left;
+	r.h = ctx.rect.bottom - ctx.rect.top;
+	return r;
+}
+
 // -----------------------------------------------------------------------------
 
 #ifdef ENTRYPOINT_WINDOWS_NEED_ARGS
@@ -391,13 +400,12 @@ void ep_touch(ep_touch_t * touch)
 int32_t _vkkey(int32_t key)
 {
 	if (key >= 'A' && key <= 'Z') return key;
+	if (key >= 'a' && key <= 'z') return key - 'a' + 'A';
 	if (key >= '0' && key <= '9') return key;
 	switch (key) {
 	case EK_BACKSPACE: return VK_BACK;
 	case EK_TAB: return VK_TAB;
 	case EK_RETURN: return VK_RETURN;
-	case EK_SHIFT: return VK_SHIFT;
-	case EK_CONTROL: return VK_CONTROL;
 	case EK_ALT: return VK_MENU;
 	case EK_PAUSE: return VK_PAUSE;
 	case EK_CAPSLOCK: return VK_CAPITAL;
@@ -467,7 +475,7 @@ int32_t _vkkey(int32_t key)
 	return 0;
 }
 
-bool ep_kdown(int32_t key)
+bool ep_khit(int32_t key)
 {
 	if(GetFocus() != ctx.hwnd)
 		return 0;
@@ -475,7 +483,7 @@ bool ep_kdown(int32_t key)
 	return ctx.keys[k] && !ctx.prev[k];
 }
 
-bool ep_kheld(int32_t key)
+bool ep_kdown(int32_t key)
 {
 	if(GetFocus() != ctx.hwnd)
 		return 0;

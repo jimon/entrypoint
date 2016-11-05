@@ -29,6 +29,10 @@ int32_t entrypoint(int32_t argc, char * argv[]);
 // = 0 means we want to exit or there is an error
 uint32_t ep_poll();
 
+// get size of the window
+typedef struct ep_size_t {uint16_t w, h;} ep_size_t;
+ep_size_t ep_size();
+
 // -----------------------------------------------------------------------------
 
 #ifdef ENTRYPOINT_PROVIDE_TIME
@@ -68,16 +72,17 @@ typedef enum {
 	EK_PAD0=128,EK_PAD1,EK_PAD2,EK_PAD3,EK_PAD4,EK_PAD5,EK_PAD6,EK_PAD7,EK_PAD8,EK_PAD9,
 	EK_PADMUL,EK_PADADD,EK_PADENTER,EK_PADSUB,EK_PADDOT,EK_PADDIV,
 	EK_F1,EK_F2,EK_F3,EK_F4,EK_F5,EK_F6,EK_F7,EK_F8,EK_F9,EK_F10,EK_F11,EK_F12,
-	EK_BACKSPACE,EK_TAB,EK_RETURN,EK_SHIFT,EK_CONTROL,EK_ALT,EK_PAUSE,EK_CAPSLOCK,
+	EK_BACKSPACE,EK_TAB,EK_RETURN,EK_ALT,EK_PAUSE,EK_CAPSLOCK,
 	EK_ESCAPE,EK_SPACE,EK_PAGEUP,EK_PAGEDN,EK_END,EK_HOME,EK_LEFT,EK_UP,EK_RIGHT,EK_DOWN,
 	EK_INSERT,EK_DELETE,EK_LWIN,EK_RWIN,EK_NUMLOCK,EK_SCROLL,EK_LSHIFT,EK_RSHIFT,
 	EK_LCONTROL,EK_RCONTROL,EK_LALT,EK_RALT,EK_SEMICOLON,EK_EQUALS,EK_COMMA,EK_MINUS,
 	EK_DOT,EK_SLASH,EK_BACKTICK,EK_LSQUARE,EK_BACKSLASH,EK_RSQUARE,EK_TICK
 } ep_key_t;
-// reads the keyboard from a window, returns non-zero if a key is pressed / held
-// key down tests for the initial press, key held repeats each frame
+
+// reads the keyboard from a window, returns non-zero if a key is hit or pressed
+// key hit tests for the initial press, key down repeats each frame
+bool ep_khit(int32_t key);
 bool ep_kdown(int32_t key);
-bool ep_kheld(int32_t key);
 // reads character input for a window, returns the UTF-32 value of the last key pressed, or 0 if none
 uint32_t ep_kchar();
 
@@ -145,12 +150,12 @@ typedef struct entrypoint_ctx_t
 			};
 		};
 	#elif __APPLE__
-	
+
 		void * window; // NSWindow
-	
+
 		uint32_t window_count;
 		bool terminated ;
-	
+
 		#ifdef ENTRYPOINT_PROVIDE_TIME
 		uint64_t prev_time;
 		mach_timebase_info_data_t timebase_info;
