@@ -16,6 +16,7 @@ int32_t entrypoint_deinit()
 
 int32_t entrypoint_might_unload()
 {
+	printf("saving crucial data!\n");
 	return 0;
 }
 
@@ -35,7 +36,7 @@ int32_t entrypoint_loop()
 	#endif
 
 	#ifdef ENTRYPOINT_PROVIDE_TIME
-	//printf("dt %f\n", ep_time());
+	printf("dt %f\n", ep_time());
 	ep_sleep(0.016f);
 	#endif
 	

@@ -121,7 +121,7 @@ uint32_t ep_kchar();
 #ifdef _WIN32
 	#define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
-#elif __APPLE__
+#elif defined(__APPLE__)
 	#include <TargetConditionals.h>
 	#include <mach/mach_time.h>
 
@@ -133,6 +133,8 @@ uint32_t ep_kchar();
 		//#warning TARGET_OS_OSX is not available, simulating it
 		#define TARGET_OS_OSX (!(TARGET_OS_IOS || TARGET_OS_TV || TARGET_OS_WATCH))
 	#endif
+#elif defined(EMSCRIPTEN)
+	#include <sys/time.h>
 #endif
 
 struct entrypoint_ctx_t
@@ -198,6 +200,21 @@ struct entrypoint_ctx_t
 			uint64_t prev_time;
 			mach_timebase_info_data_t timebase_info;
 		#endif
+	#elif defined(EMSCRIPTEN)
+		union
+		{
+			uint8_t flags;
+			struct
+			{
+				uint8_t flag_want_to_close: 1;
+				#ifdef ENTRYPOINT_PROVIDE_TIME
+				uint8_t flag_time_set: 1;
+				#endif
+			};
+		};
+		#ifdef ENTRYPOINT_PROVIDE_TIME
+			struct timeval prev_time;
+		#endif
 	#endif
 
 	// -------------------------------------------------------------------------
@@ -206,7 +223,7 @@ struct entrypoint_ctx_t
 	#ifdef ENTRYPOINT_PROVIDE_INPUT
 		uint32_t last_char;
 		char keys[256], prev[256];
-		#ifdef __APPLE__
+		#if defined(__APPLE__) || defined(EMSCRIPTEN)
 			ep_touch_t touch;
 		#endif
 	#endif

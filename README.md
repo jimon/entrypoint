@@ -15,6 +15,7 @@ So let's take TIGR as a baseline, offload all rendering part to something like [
 - Windows
 - macOS
 - iOS
+- Emscripten (a bit rough)
 
 ### TODO
 
@@ -23,7 +24,6 @@ So let's take TIGR as a baseline, offload all rendering part to something like [
 - iOS keyboard (at least partially)
 - MessageBox/allert
 - Android
-- Emscripten
 - X11
 - Wayland
 - Small casual OpenGL renderer
@@ -32,12 +32,6 @@ So let's take TIGR as a baseline, offload all rendering part to something like [
 
 This library very loosely based on TIGR.
 
-	// TIGR - TIny GRaphics Library - v1.3
-	//        ^^   ^^
-	//
-	// rawr.
-	
-	/*
 	This is free and unencumbered software released into the public domain.
 	
 	Our intent is that anyone is free to copy and use this software,
@@ -48,4 +42,3 @@ This library very loosely based on TIGR.
 	
 	The software is provided "as is", without any kind of warranty, including
 	any implied warranty. If it breaks, you get to keep both pieces.
-	*/
