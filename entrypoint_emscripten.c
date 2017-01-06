@@ -1,7 +1,4 @@
 
-// this is a bit rough implementation
-// please take care if you plan to use it in production
-
 #ifdef EMSCRIPTEN
 
 #define ENTRYPOINT_CTX
@@ -298,6 +295,9 @@ static EM_BOOL _mouse_move_cb(int event_type, const EmscriptenMouseEvent * mouse
 {
 	ctx.touch.x = mouse_event->canvasX;
 	ctx.touch.y = mouse_event->canvasY;
+	ctx.touch.multitouch[0].x = ctx.touch.x;
+	ctx.touch.multitouch[0].y = ctx.touch.y;
+
 	return false;
 }
 
@@ -307,17 +307,22 @@ static EM_BOOL _mouse_key_cb(int event_type, const EmscriptenMouseEvent * mouse_
 	if(mouse_event->button == 0) ctx.touch.left = v;
 	else if(mouse_event->button == 1) ctx.touch.middle = v;
 	else if(mouse_event->button == 2) ctx.touch.right = v;
+	ctx.touch.multitouch[0].touched = ctx.touch.left;
 	return true;
 }
 
 static EM_BOOL _touch_cb(int event_type, const EmscriptenTouchEvent * touch_event, void * notused)
 {
+	// TODO support multitouch here
 	if(touch_event->numTouches > 0)
 	{
 		ctx.touch.x = touch_event->touches[0].canvasX;
 		ctx.touch.y = touch_event->touches[0].canvasY;
+		ctx.touch.multitouch[0].x = ctx.touch.x;
+		ctx.touch.multitouch[0].y = ctx.touch.y;
 	}
 	ctx.touch.left = event_type == EMSCRIPTEN_EVENT_TOUCHSTART || event_type == EMSCRIPTEN_EVENT_TOUCHMOVE;
+	ctx.touch.multitouch[0].touched = ctx.touch.left;
 	return true;
 }
 #endif

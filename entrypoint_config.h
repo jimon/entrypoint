@@ -9,6 +9,10 @@
 #define ENTRYPOINT_PROVIDE_INPUT
 
 // -----------------------------------------------------------------------------
+// detailed configs
+#define ENTRYPOINT_MAX_MULTITOUCH 16
+
+// -----------------------------------------------------------------------------
 // Windows
 
 // adds an additional linker flags to use windows subsystem, aka don't create console window

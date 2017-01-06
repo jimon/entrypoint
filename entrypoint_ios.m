@@ -23,7 +23,8 @@ entrypoint_ctx_t * ep_ctx() {return &ctx;}
 - (void)tick;
 
 #ifdef ENTRYPOINT_PROVIDE_INPUT
-- (void)onTouch:(UIEvent *)event;
+- (void)onTouchAddOrMove:(UITouch *)touch;
+- (void)onTouchRemove:(UITouch *)touch;
 #endif
 @end
 
@@ -47,9 +48,8 @@ entrypoint_ctx_t * ep_ctx() {return &ctx;}
 	else
 		ctx.flag_failed_to_init = 0;
 	
-	
 	self.contentScaleFactor = [UIScreen mainScreen].scale;
-	
+	self.multipleTouchEnabled = true;
 }
 
 - (id)initWithFrame:(CGRect)rect
@@ -111,34 +111,80 @@ entrypoint_ctx_t * ep_ctx() {return &ctx;}
 }
 
 #ifdef ENTRYPOINT_PROVIDE_INPUT
-- (void)onTouch:(UIEvent *)event
+- (void)onTouchAddOrMove:(UITouch *)touch
 {
-	UITouch * touch = [[event allTouches] anyObject];
 	CGPoint touchLocation = [touch locationInView:self];
 	ctx.touch.x = self.contentScaleFactor * touchLocation.x;
 	ctx.touch.y = self.contentScaleFactor * touchLocation.y;
+	
+	void * context = (__bridge void *)(touch);
+	uint8_t first_free = ENTRYPOINT_MAX_MULTITOUCH;
+	uint8_t update_index = ENTRYPOINT_MAX_MULTITOUCH;
+	for(uint8_t i = 0; i < ENTRYPOINT_MAX_MULTITOUCH; ++i)
+	{
+		if(ctx.touch.multitouch[i].context == context && ctx.touch.multitouch[i].touched)
+		{
+			update_index = i;
+			break;
+		}
+		else if(first_free >= ENTRYPOINT_MAX_MULTITOUCH && ctx.touch.multitouch[i].touched == 0)
+			first_free = i;
+	}
+	
+	uint8_t index = update_index < ENTRYPOINT_MAX_MULTITOUCH ? update_index : first_free;
+	
+	if(index < ENTRYPOINT_MAX_MULTITOUCH)
+	{
+		ctx.touch.multitouch[index].context = context;
+		ctx.touch.multitouch[index].x = ctx.touch.x;
+		ctx.touch.multitouch[index].y = ctx.touch.y;
+		ctx.touch.multitouch[index].touched = 1;
+	}
+}
+
+- (void)onTouchRemove:(UITouch *)touch
+{
+	CGPoint touchLocation = [touch locationInView:self];
+	ctx.touch.x = self.contentScaleFactor * touchLocation.x;
+	ctx.touch.y = self.contentScaleFactor * touchLocation.y;
+	
+	void * context = (__bridge void *)(touch);
+	for(uint8_t i = 0; i < ENTRYPOINT_MAX_MULTITOUCH; ++i)
+	{
+		if(ctx.touch.multitouch[i].context == context)
+		{
+			ctx.touch.multitouch[i].x = ctx.touch.x;
+			ctx.touch.multitouch[i].y = ctx.touch.y;
+			ctx.touch.multitouch[i].touched = 0;
+			break;
+		}
+	}
 }
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
-	[self onTouch:event];
+	for(UITouch * touch in touches)
+		[self onTouchAddOrMove:touch];
 	ctx.touch.left = 1;
 }
 
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
 {
-	[self onTouch:event];
+	for(UITouch * touch in touches)
+		[self onTouchRemove:touch];
 	ctx.touch.left = 0;
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {
-	[self onTouch:event];
+	for(UITouch * touch in touches)
+		[self onTouchAddOrMove:touch];
 }
 
 - (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
 {
-	[self onTouch:event];
+	for(UITouch * touch in touches)
+		[self onTouchRemove:touch];
 	ctx.touch.left = 0;
 }
 #endif

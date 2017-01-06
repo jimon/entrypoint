@@ -310,10 +310,12 @@ static void _onevent(NSEvent * event)
 
 		ctx.touch.x = p.x;
 		ctx.touch.y = p.y;
+		ctx.touch.multitouch[0].x = p.x;
+		ctx.touch.multitouch[0].y = p.y;
 		break;
 	}
-	case NSLeftMouseDown:	ctx.touch.left = 1; break;
-	case NSLeftMouseUp:		ctx.touch.left = 0; break;
+	case NSLeftMouseDown:	ctx.touch.left = 1; ctx.touch.multitouch[0].touched = true; break;
+	case NSLeftMouseUp:		ctx.touch.left = 0; ctx.touch.multitouch[0].touched = false; break;
 	case NSRightMouseDown:	ctx.touch.right = 1; break;
 	case NSRightMouseUp:	ctx.touch.right = 0; break;
 	case NSOtherMouseDown:

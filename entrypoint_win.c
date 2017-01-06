@@ -417,6 +417,10 @@ void ep_touch(ep_touch_t * touch)
 		if(GetAsyncKeyState(VK_MBUTTON) & 0x8000) touch->middle = 1;
 		if(GetAsyncKeyState(VK_RBUTTON) & 0x8000) touch->right = 1;
 	}
+
+	touch->multitouch[0].x = touch->x;
+	touch->multitouch[0].y = touch->y;
+	touch->multitouch[0].touched = touch->left;
 }
 
 int32_t _vkkey(int32_t key)

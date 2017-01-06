@@ -71,6 +71,7 @@ void ep_sleep(double seconds);
 // mouse/touch stuff
 typedef struct
 {
+	// normal mouse and one finger touch
 	float x, y;
 	union
 	{
@@ -82,8 +83,16 @@ typedef struct
 			uint8_t right: 1;
 		};
 	};
+	
+	// multitouch feature
+	struct
+	{
+		void * context;
+		float x, y;
+		uint8_t touched;
+	} multitouch[ENTRYPOINT_MAX_MULTITOUCH];
+	
 	// TODO mouse wheel, additional buttons
-	// TODO support mutlitouch on iOS
 } ep_touch_t;
 void ep_touch(ep_touch_t * touch);
 
