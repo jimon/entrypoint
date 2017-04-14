@@ -305,7 +305,9 @@ static void _onevent(NSEvent * event)
 
 		// map input to pixels
 		NSRect r = {p.x, p.y, 0, 0};
+		#ifdef ENTRYPOINT_MACOS_RETINA
 		r = [[current_window contentView] convertRectToBacking:r];
+		#endif
 		p = r.origin;
 
 		ctx.touch.x = p.x;
@@ -411,11 +413,22 @@ ep_size_t ep_size()
 
 	NSWindow * current_window = [NSApp keyWindow];
 	NSRect rect = [[current_window contentView] frame];
+	#ifdef ENTRYPOINT_MACOS_RETINA
 	rect = [[current_window contentView] convertRectToBacking:rect];
+	#endif
 	r.w = rect.size.width;
 	r.h = rect.size.height;
 
 	return r;
+}
+
+bool ep_retina()
+{
+	#ifdef ENTRYPOINT_MACOS_RETINA
+		return true;
+	#else
+		return false;
+	#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -464,7 +477,9 @@ int main(int argc, char * argv[])
 
 	// configure the view
 	NSView * content_view = [window contentView];
-	[content_view setWantsBestResolutionOpenGLSurface:YES]; // disable this if you don't want retina support
+	#ifdef ENTRYPOINT_MACOS_RETINA
+	[content_view setWantsBestResolutionOpenGLSurface:YES];
+	#endif
 
 	[window cascadeTopLeftFromPoint:NSMakePoint(ENTRYPOINT_MACOS_START_X, ENTRYPOINT_MACOS_START_Y)];
 	[window setTitle:ENTRYPOINT_MACOS_TITLE];

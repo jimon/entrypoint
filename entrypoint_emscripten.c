@@ -28,6 +28,11 @@ ep_size_t ep_size()
 	return r;
 }
 
+bool ep_retina()
+{
+	return false; // TODO
+}
+
 // -----------------------------------------------------------------------------
 
 #ifdef ENTRYPOINT_PROVIDE_INPUT

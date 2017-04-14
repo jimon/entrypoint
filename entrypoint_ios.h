@@ -11,8 +11,18 @@
 // also please note, only one view instance should be used (which is a most common scenario anyway)
 
 #import <UIKit/UIKit.h>
+#import <CoreMotion/CoreMotion.h>
+
+#if defined(ENTRYPOINT_IOS_CM_ACCELEROMETER)
+	#define ENTRYPOINT_IOS_CM
+#endif
 
 @interface EntryPointView : UIView
+
+#ifdef ENTRYPOINT_IOS_CM
+@property(nonatomic, strong) CMMotionManager * motionManager;
+#endif
+
 @end
 
 #ifdef __cplusplus

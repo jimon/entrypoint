@@ -160,7 +160,7 @@ LRESULT CALLBACK tigrWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	case WM_CHAR:
 		if(wParam == '\r')
 			wParam = '\n';
-		ctx.last_char = wParam;
+		ctx.last_char = (uint32_t)wParam;
 		break;
 	case WM_MENUCHAR:
 		if(LOWORD(wParam) == VK_RETURN) // disable beep on Alt+Enter
@@ -196,9 +196,14 @@ ep_size_t ep_size()
 {
 	ep_size_t r;
 	GetClientRect(ctx.hwnd, &ctx.rect);
-	r.w = ctx.rect.right - ctx.rect.left;
-	r.h = ctx.rect.bottom - ctx.rect.top;
+	r.w = (uint16_t)(ctx.rect.right - ctx.rect.left);
+	r.h = (uint16_t)(ctx.rect.bottom - ctx.rect.top);
 	return r;
+}
+
+bool ep_retina()
+{
+	return false; // TODO
 }
 
 // -----------------------------------------------------------------------------
@@ -407,8 +412,8 @@ void ep_touch(ep_touch_t * touch)
 	GetCursorPos(&pt);
 	ScreenToClient(ctx.hwnd, &pt);
 	GetClientRect(ctx.hwnd, &ctx.rect);
-	touch->x = pt.x - ctx.rect.left;
-	touch->y = pt.y - ctx.rect.top;
+	touch->x = (float)(pt.x - ctx.rect.left);
+	touch->y = (float)(pt.y - ctx.rect.top);
 
 	touch->flags = 0;
 	if(GetFocus() == ctx.hwnd)

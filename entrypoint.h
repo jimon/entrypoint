@@ -53,6 +53,9 @@ entrypoint_ctx_t * ep_ctx();
 typedef struct ep_size_t {uint16_t w, h;} ep_size_t;
 ep_size_t ep_size();
 
+// is current platform built with retina support
+bool ep_retina();
+
 // -----------------------------------------------------------------------------
 
 #ifdef ENTRYPOINT_PROVIDE_TIME
@@ -91,6 +94,9 @@ typedef struct
 		float x, y;
 		uint8_t touched;
 	} multitouch[ENTRYPOINT_MAX_MULTITOUCH];
+
+	// accelerometer data, if available
+	float acc_x, acc_y, acc_z;
 	
 	// TODO mouse wheel, additional buttons
 } ep_touch_t;

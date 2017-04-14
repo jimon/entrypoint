@@ -51,6 +51,9 @@
 #define ENTRYPOINT_MACOS_START_X	20
 #define ENTRYPOINT_MACOS_START_Y	20
 
+// disable this if you don't want retina support
+//#define ENTRYPOINT_MACOS_RETINA
+
 // -----------------------------------------------------------------------------
 // iOS
 
@@ -63,5 +66,13 @@
 // if you would like we can define a main for you, just please provide us with your app delegate class name as a string
 #define ENTRYPOINT_IOS_MAIN
 #define ENTRYPOINT_IOS_MAIN_APPDELEGATE_CLASSNAME @"EntryPointAppDelegate"
+
+// disable this if you don't want retina support
+#define ENTRYPOINT_IOS_RETINA
+
+// disable this if you don't need accelerometer
+// WARNING: Remember to fill NSMotionUsageDescription in your Info.plist!
+#define ENTRYPOINT_IOS_CM_ACCELEROMETER
+#define ENTRYPOINT_IOS_CM_ACCELEROMETER_FREQ 60 // in Hertz
 
 // -----------------------------------------------------------------------------

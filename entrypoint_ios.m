@@ -47,9 +47,18 @@ entrypoint_ctx_t * ep_ctx() {return &ctx;}
 	}
 	else
 		ctx.flag_failed_to_init = 0;
-	
+
+	#ifdef ENTRYPOINT_IOS_RETINA
 	self.contentScaleFactor = [UIScreen mainScreen].scale;
+	#endif
 	self.multipleTouchEnabled = true;
+
+	#ifdef ENTRYPOINT_IOS_CM
+	self.motionManager = [[CMMotionManager alloc] init];
+	#endif
+	#ifdef ENTRYPOINT_IOS_CM_ACCELEROMETER
+	self.motionManager.accelerometerUpdateInterval = 1.0f / ENTRYPOINT_IOS_CM_ACCELEROMETER_FREQ;
+	#endif
 }
 
 - (id)initWithFrame:(CGRect)rect
@@ -88,6 +97,11 @@ entrypoint_ctx_t * ep_ctx() {return &ctx;}
 		m_displayLink = [self.window.screen displayLinkWithTarget:self selector:@selector(tick)];
 		[m_displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
 	}
+
+	#ifdef ENTRYPOINT_IOS_CM_ACCELEROMETER
+	if([self.motionManager isAccelerometerAvailable])
+		[self.motionManager startAccelerometerUpdates];
+	#endif
 }
 
 - (void)stop
@@ -99,12 +113,26 @@ entrypoint_ctx_t * ep_ctx() {return &ctx;}
 		m_displayLink = nil;
 		entrypoint_might_unload();
 	}
+
+	#ifdef ENTRYPOINT_IOS_CM_ACCELEROMETER
+	if([self.motionManager isAccelerometerAvailable])
+		[self.motionManager stopAccelerometerUpdates];
+	#endif
 }
 
 - (void)tick
 {
 	if(!ctx.flag_failed_to_init && ctx.flag_anim)
 	{
+		#if defined(ENTRYPOINT_PROVIDE_INPUT) && defined(ENTRYPOINT_IOS_CM_ACCELEROMETER)
+		if([self.motionManager isAccelerometerAvailable] && self.motionManager.accelerometerData)
+		{
+			ctx.touch.acc_x = self.motionManager.accelerometerData.acceleration.x;
+			ctx.touch.acc_y = self.motionManager.accelerometerData.acceleration.y;
+			ctx.touch.acc_z = self.motionManager.accelerometerData.acceleration.z;
+		}
+		#endif
+
 		if(entrypoint_loop() != 0)
 			[self stop]; // an iOS app cannot force itself to close under normal UX flows
 	}
@@ -213,6 +241,15 @@ ep_size_t ep_size()
 	r.w = ctx.view_w;
 	r.h = ctx.view_h;
 	return r;
+}
+
+bool ep_retina()
+{
+	#ifdef ENTRYPOINT_IOS_RETINA
+		return true;
+	#else
+		return false;
+	#endif
 }
 
 // -----------------------------------------------------------------------------
