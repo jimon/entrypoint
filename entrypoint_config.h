@@ -76,3 +76,8 @@
 #define ENTRYPOINT_IOS_CM_ACCELEROMETER_FREQ 60 // in Hertz
 
 // -----------------------------------------------------------------------------
+// Android
+
+#define ENTRYPOINT_ANDROID_PREPARE_PARAMS {}
+
+// -----------------------------------------------------------------------------

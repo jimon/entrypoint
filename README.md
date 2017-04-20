@@ -16,6 +16,7 @@ So let's take TIGR as a baseline, offload all rendering part to something like [
 - macOS
 - iOS
 - Emscripten (a bit rough)
+- Android
 
 ### TODO
 
@@ -23,10 +24,17 @@ So let's take TIGR as a baseline, offload all rendering part to something like [
 - Mouse wheel
 - iOS keyboard (at least partially)
 - MessageBox/allert
-- Android
 - X11
 - Wayland
 - Small casual OpenGL renderer
+
+### iOS
+
+For iOS just create a new project, and replace everything there with entrypoint, you don't need UI files.
+
+### Android
+
+Use android native activity sample as project template.
 
 ### Additional
 
