@@ -116,7 +116,7 @@ static void _leave_borderless()
 
 // -----------------------------------------------------------------------------
 
-LRESULT CALLBACK tigrWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK epWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch(message)
 	{
@@ -294,7 +294,7 @@ int main(int argc, char * argv[])
 	WNDCLASSEXW wcex = {0};
 	wcex.cbSize			= sizeof(WNDCLASSEXW);
 	wcex.style			= CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-	wcex.lpfnWndProc	= tigrWndProc;
+	wcex.lpfnWndProc	= epWndProc;
 	wcex.hInstance		= GetModuleHandle(NULL);
 	wcex.hIcon			= NULL;
 	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
@@ -373,7 +373,7 @@ int main(int argc, char * argv[])
 // -----------------------------------------------------------------------------
 #ifdef ENTRYPOINT_PROVIDE_TIME
 
-double ep_time()
+double ep_delta_time()
 {
 	LARGE_INTEGER qpc, freq;
 	QueryPerformanceCounter(&qpc);
@@ -400,7 +400,24 @@ void ep_sleep(double seconds)
 }
 
 #endif
+
 // -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_PROVIDE_LOG
+
+void ep_log(const char * message, ...)
+{
+	va_list args;
+	va_start(args, message);
+	vprintf(message, args);
+	fflush(stdout);
+	va_end(args);
+}
+
+#endif
+
+// -----------------------------------------------------------------------------
+
 #ifdef ENTRYPOINT_PROVIDE_INPUT
 
 void ep_touch(ep_touch_t * touch)
@@ -530,4 +547,5 @@ uint32_t ep_kchar()
 	ctx.last_char = 0;
 	return k;
 }
+
 #endif

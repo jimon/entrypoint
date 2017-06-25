@@ -256,7 +256,7 @@ bool ep_retina()
 
 #ifdef ENTRYPOINT_PROVIDE_TIME
 
-double ep_time()
+double ep_delta_time()
 {
 	if(ctx.timebase_info.denom == 0)
 	{
@@ -274,6 +274,21 @@ double ep_time()
 void ep_sleep(double seconds)
 {
 	usleep((useconds_t)(seconds * 1000000.0));
+}
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_PROVIDE_LOG
+
+void ep_log(const char * message, ...)
+{
+	va_list args;
+	va_start(args, message);
+	vprintf(message, args);
+	fflush(stdout);
+	va_end(args);
 }
 
 #endif

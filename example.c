@@ -36,7 +36,7 @@ int32_t entrypoint_loop()
 	#endif
 
 	#ifdef ENTRYPOINT_PROVIDE_TIME
-	printf("dt %f\n", ep_time());
+	printf("dt %f\n", ep_delta_time());
 	ep_sleep(0.016f);
 	#endif
 	

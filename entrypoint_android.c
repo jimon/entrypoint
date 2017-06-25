@@ -279,7 +279,7 @@ void android_main(struct android_app * app)
 // -----------------------------------------------------------------------------
 #ifdef ENTRYPOINT_PROVIDE_TIME
 
-double ep_time()
+double ep_delta_time()
 {
 	if(!ctx.flag_time_set)
 	{
@@ -298,6 +298,18 @@ double ep_time()
 void ep_sleep(double seconds)
 {
 	usleep((useconds_t)(seconds * 1000000.0));
+}
+
+#endif
+// -----------------------------------------------------------------------------
+#ifdef ENTRYPOINT_PROVIDE_LOG
+
+void ep_log(const char * message, ...)
+{
+	va_list args;
+	va_start(args, message);
+	__android_log_vprint(ANDROID_LOG_INFO, ENTRYPOINT_ANDROID_LOG_TAG, message, args);
+	va_end(args);
 }
 
 #endif

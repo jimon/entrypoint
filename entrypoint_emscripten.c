@@ -385,7 +385,7 @@ int main(int argc, char * argv[])
 
 #ifdef ENTRYPOINT_PROVIDE_TIME
 
-double ep_time()
+double ep_delta_time()
 {
 	if(!ctx.flag_time_set)
 	{
@@ -404,6 +404,21 @@ double ep_time()
 void ep_sleep(double seconds)
 {
 	//emscripten_sleep(seconds); // TODO requires EMTERPRETIFY, probably not the wisest idea anyway
+}
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_PROVIDE_LOG
+
+void ep_log(const char * message, ...)
+{
+	va_list args;
+	va_start(args, message);
+	vprintf(message, args);
+	fflush(stdout);
+	va_end(args);
 }
 
 #endif

@@ -60,10 +60,21 @@ bool ep_retina();
 
 #ifdef ENTRYPOINT_PROVIDE_TIME
 
-// returns the amount of time elapsed since ep_time was last called in seconds, or 0 first time
-double ep_time();
+// returns the amount of time elapsed since ep_delta_time was last called in seconds, or 0 first time
+double ep_delta_time();
 
+// sleep for provided amount of seconds, not available on emscripten
 void ep_sleep(double seconds);
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_PROVIDE_LOG
+
+// on all platforms except android you can simply and safely use printf
+// use this function if you want consistent logging on all platforms
+void ep_log(const char * message, ...);
 
 #endif
 
@@ -86,7 +97,7 @@ typedef struct
 			uint8_t right: 1;
 		};
 	};
-	
+
 	// multitouch feature
 	struct
 	{
@@ -97,7 +108,7 @@ typedef struct
 
 	// accelerometer data, if available
 	float acc_x, acc_y, acc_z;
-	
+
 	// TODO mouse wheel, additional buttons
 } ep_touch_t;
 void ep_touch(ep_touch_t * touch);
@@ -151,7 +162,7 @@ uint32_t ep_kchar();
 #elif defined(EMSCRIPTEN)
 	#include <sys/time.h>
 #elif defined(__ANDROID__)
-    #include <android/native_window.h>
+	#include <android/native_window.h>
 	#include <android_native_app_glue.h>
 	#include <pthread.h>
 #endif

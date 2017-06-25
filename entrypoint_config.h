@@ -6,6 +6,7 @@
 // general
 
 #define ENTRYPOINT_PROVIDE_TIME
+#define ENTRYPOINT_PROVIDE_LOG
 #define ENTRYPOINT_PROVIDE_INPUT
 
 // -----------------------------------------------------------------------------
@@ -79,5 +80,8 @@
 // Android
 
 #define ENTRYPOINT_ANDROID_PREPARE_PARAMS {}
+
+// this is used in ep_log to provide a correct log tag
+#define ENTRYPOINT_ANDROID_LOG_TAG "EntryPoint"
 
 // -----------------------------------------------------------------------------
