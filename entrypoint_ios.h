@@ -12,6 +12,7 @@
 
 #import <UIKit/UIKit.h>
 #import <CoreMotion/CoreMotion.h>
+#include "entrypoint_config.h"
 
 #if defined(ENTRYPOINT_IOS_CM_ACCELEROMETER)
 	#define ENTRYPOINT_IOS_CM
@@ -24,6 +25,18 @@
 #endif
 
 @end
+
+#ifdef ENTRYPOINT_IOS_APPDELEGATE
+
+@interface EntryPointViewController : UIViewController
+@property (strong, nonatomic) EntryPointView * view;
+@end
+
+@interface EntryPointAppDelegate : UIResponder <UIApplicationDelegate>
+@property (strong, nonatomic) UIWindow * window;
+@end
+
+#endif
 
 #ifdef __cplusplus
 extern "C" {

@@ -282,10 +282,10 @@ static void _onevent(NSEvent * event)
 	switch(eventType)
 	{
 	#ifdef ENTRYPOINT_PROVIDE_INPUT
-	case NSMouseMoved:
-	case NSLeftMouseDragged:
-	case NSRightMouseDragged:
-	case NSOtherMouseDragged:
+	case NSEventTypeMouseMoved:
+	case NSEventTypeLeftMouseDragged:
+	case NSEventTypeRightMouseDragged:
+	case NSEventTypeOtherMouseDragged:
 	{
 		NSWindow * current_window = [NSApp keyWindow];
 		NSRect adjust_frame = [[current_window contentView] frame];
@@ -316,15 +316,15 @@ static void _onevent(NSEvent * event)
 		ctx.touch.multitouch[0].y = p.y;
 		break;
 	}
-	case NSLeftMouseDown:	ctx.touch.left = 1; ctx.touch.multitouch[0].touched = true; break;
-	case NSLeftMouseUp:		ctx.touch.left = 0; ctx.touch.multitouch[0].touched = false; break;
-	case NSRightMouseDown:	ctx.touch.right = 1; break;
-	case NSRightMouseUp:	ctx.touch.right = 0; break;
-	case NSOtherMouseDown:
+	case NSEventTypeLeftMouseDown:	ctx.touch.left = 1; ctx.touch.multitouch[0].touched = true; break;
+	case NSEventTypeLeftMouseUp:		ctx.touch.left = 0; ctx.touch.multitouch[0].touched = false; break;
+	case NSEventTypeRightMouseDown:	ctx.touch.right = 1; break;
+	case NSEventTypeRightMouseUp:	ctx.touch.right = 0; break;
+	case NSEventTypeOtherMouseDown:
 		if([event buttonNumber] == 2) // number == 2 is a middle button
 			ctx.touch.middle = 1;
 		break;
-	case NSOtherMouseUp:
+	case NSEventTypeOtherMouseUp:
 		if([event buttonNumber] == 2) // number == 2 is a middle button
 			ctx.touch.middle = 0;
 		break;
@@ -344,7 +344,7 @@ static void _onevent(NSEvent * event)
 //			printf("mouse scroll wheel delta %f %f\n", deltaX, deltaY);
 //		break;
 //	}
-	case NSFlagsChanged:
+	case NSEventTypeFlagsChanged:
 	{
 		NSEventModifierFlags modifiers = [event modifierFlags];
 
@@ -368,7 +368,7 @@ static void _onevent(NSEvent * event)
 			};
 		} keys;
 
-		keys.mask = (modifiers & NSDeviceIndependentModifierFlagsMask) >> 16;
+		keys.mask = (modifiers & NSEventModifierFlagDeviceIndependentFlagsMask) >> 16;
 
 		// TODO L,R variation of keys?
 		ctx.keys[EK_LCONTROL] = keys.alpha_shift;
@@ -382,7 +382,7 @@ static void _onevent(NSEvent * event)
 		ctx.keys[EK_RWIN]     = keys.command;
 		break;
 	}
-	case NSKeyDown:
+	case NSEventTypeKeyDown:
 	{
 		NSString * characters = [event characters];
 		NSData * utf32 = [characters dataUsingEncoding:NSUTF32StringEncoding];
@@ -392,7 +392,7 @@ static void _onevent(NSEvent * event)
 		ctx.keys[_macoskey([event keyCode])] = 1;
 		break;
 	}
-	case NSKeyUp:
+	case NSEventTypeKeyUp:
 		ctx.keys[_macoskey([event keyCode])] = 0;
 		break;
 	#endif
@@ -400,11 +400,19 @@ static void _onevent(NSEvent * event)
 		break;
 	}
 
-	[NSApp sendEvent:event];
+	if(eventType != NSEventTypeKeyDown && eventType != NSEventTypeKeyUp)
+		[NSApp sendEvent:event];
 
 	// if user closes the window we might need to terminate asap
 	if(!ctx.terminated)
 		[NSApp updateWindows];
+}
+
+static void _process_events()
+{
+	NSEvent * event = nil;
+	while((event = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES]) && !ctx.terminated)
+		_onevent(event);
 }
 
 ep_size_t ep_size()
@@ -466,7 +474,7 @@ int main(int argc, char * argv[])
 	// create the window
 	NSWindow * window = [[NSWindow alloc]
 		initWithContentRect:NSMakeRect(0, 0, ENTRYPOINT_MACOS_WIDTH, ENTRYPOINT_MACOS_HEIGHT)
-		styleMask:NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask | NSResizableWindowMask
+		styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
 		backing:NSBackingStoreBuffered
 		defer:NO];
 	ctx.window = (__bridge void *)(window); // we still own it here, but put a reference for everyone else
@@ -489,6 +497,8 @@ int main(int argc, char * argv[])
 
 	[NSApp activateIgnoringOtherApps:YES]; // TODO do we really need this?
 
+	_process_events();
+
 	int32_t result_code = 0;
 	if((result_code = entrypoint_init(ctx.argc, ctx.argv)) != 0)
 		return result_code;
@@ -500,9 +510,7 @@ int main(int argc, char * argv[])
 			memcpy(ctx.prev, ctx.keys, sizeof(ctx.prev));
 		#endif
 
-		NSEvent * event = nil;
-		while((event = [NSApp nextEventMatchingMask:NSAnyEventMask untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES]) && !ctx.terminated)
-			_onevent(event);
+		_process_events();
 	}
 
 	if((result_code = entrypoint_might_unload()) != 0)
