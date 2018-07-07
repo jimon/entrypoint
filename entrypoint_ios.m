@@ -18,9 +18,11 @@ entrypoint_ctx_t * ep_ctx() {return &ctx;}
 {
 	CADisplayLink* m_displayLink;
 }
+
 - (void)start;
 - (void)stop;
 - (void)tick;
+- (ep_ui_margins_t)ui_margins;
 
 #ifdef ENTRYPOINT_PROVIDE_INPUT
 - (void)onTouchAddOrMove:(UITouch *)touch;
@@ -91,6 +93,11 @@ entrypoint_ctx_t * ep_ctx() {return &ctx;}
 
 - (void)start
 {
+	UIGestureRecognizer * gr0 = self.window.gestureRecognizers[0];
+	UIGestureRecognizer * gr1 = self.window.gestureRecognizers[1];
+	gr0.delaysTouchesBegan = false;
+	gr1.delaysTouchesBegan = false;
+
 	if(m_displayLink == nil)
 	{
 		ctx.flag_anim = 1;
@@ -136,6 +143,27 @@ entrypoint_ctx_t * ep_ctx() {return &ctx;}
 		if(entrypoint_loop() != 0)
 			[self stop]; // an iOS app cannot force itself to close under normal UX flows
 	}
+}
+
+- (ep_ui_margins_t)ui_margins
+{
+	ep_ui_margins_t r = {0, 0, 0, 0};
+
+	if ([self respondsToSelector: @selector(safeAreaInsets)])
+	{
+		UIEdgeInsets insets = [self safeAreaInsets];
+
+		#define CLAMP0(_x) ( (_x) > 0.0f ? (_x) : 0.0f )
+
+		r.l = self.contentScaleFactor * CLAMP0(insets.left);
+		r.t = self.contentScaleFactor * CLAMP0(insets.top);
+		r.r = self.contentScaleFactor * CLAMP0(insets.right);
+		r.b = self.contentScaleFactor * CLAMP0(insets.bottom);
+
+		#undef CLAMP0
+	}
+
+	return r;
 }
 
 #ifdef ENTRYPOINT_PROVIDE_INPUT
@@ -252,6 +280,17 @@ bool ep_retina()
 	#endif
 }
 
+ep_ui_margins_t ep_ui_margins()
+{
+	if(ctx.view)
+		return [(__bridge EntryPointView*)ctx.view ui_margins];
+	else
+	{
+		ep_ui_margins_t r = {0, 0, 0, 0};
+		return r;
+	}
+}
+
 // -----------------------------------------------------------------------------
 
 #ifdef ENTRYPOINT_PROVIDE_TIME
@@ -306,6 +345,17 @@ void ep_touch(ep_touch_t * touch)
 bool ep_khit(int32_t key) {return false;}
 bool ep_kdown(int32_t key) {return false;}
 uint32_t ep_kchar() {return 0;}
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_PROVIDE_OPENURL
+
+void ep_openurl(const char * url)
+{
+	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:[NSString stringWithUTF8String:url]]];
+}
 
 #endif
 

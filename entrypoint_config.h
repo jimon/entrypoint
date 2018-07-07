@@ -8,6 +8,7 @@
 #define ENTRYPOINT_PROVIDE_TIME
 #define ENTRYPOINT_PROVIDE_LOG
 #define ENTRYPOINT_PROVIDE_INPUT
+#define ENTRYPOINT_PROVIDE_OPENURL
 
 // -----------------------------------------------------------------------------
 // detailed configs

@@ -11,7 +11,7 @@
 #include <assert.h>
 #include <emscripten.h>
 #ifdef ENTRYPOINT_PROVIDE_INPUT
-#include <html5.h>
+#include <emscripten/html5.h>
 #endif
 
 static entrypoint_ctx_t ctx = {0};
@@ -32,6 +32,12 @@ ep_size_t ep_size()
 bool ep_retina()
 {
 	return false; // TODO
+}
+
+ep_ui_margins_t ep_ui_margins()
+{
+	ep_ui_margins_t r = {0, 0, 0, 0};
+	return r;
 }
 
 // -----------------------------------------------------------------------------
@@ -453,6 +459,19 @@ uint32_t ep_kchar()
 	uint32_t k = ctx.last_char;
 	ctx.last_char = 0;
 	return k;
+}
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_PROVIDE_OPENURL
+
+void ep_openurl(const char * url)
+{
+	EM_ASM({
+		window.open(UTF8ToString($0), '_blank');
+	}, url);
 }
 
 #endif

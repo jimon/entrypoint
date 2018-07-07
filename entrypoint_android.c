@@ -5,16 +5,18 @@
 
 #define ENTRYPOINT_CTX
 #include "entrypoint.h"
+#include "entrypoint_android.h"
 
 #include <android/log.h>
 #include <android/input.h>
 #include <android/window.h>
 #include <android/native_window.h>
 
+#include <jni.h>
+
 #include <android_native_app_glue.c> // just so we don't need to build it
 
 static entrypoint_ctx_t ctx = {0};
-static ANativeWindow * new_window = NULL;
 entrypoint_ctx_t * ep_ctx() {return &ctx;}
 
 // -----------------------------------------------------------------------------
@@ -30,12 +32,19 @@ bool ep_retina()
 	return false; // TODO
 }
 
+ep_ui_margins_t ep_ui_margins()
+{
+	// TODO some phones actually have curved screen, how do we detect that?
+	ep_ui_margins_t r = {0, 0, 0, 0};
+	return r;
+}
+
 // -----------------------------------------------------------------------------
+
+static void * entrypoint_thread(void * param);
 
 static void on_app_cmd(struct android_app * app, int32_t cmd)
 {
-	new_window = app->window;
-
 	switch(cmd)
 	{
 	case APP_CMD_INPUT_CHANGED:
@@ -48,6 +57,20 @@ static void on_app_cmd(struct android_app * app, int32_t cmd)
 		// Command from main thread: a new ANativeWindow is ready for use.  Upon
 		// receiving this command, android_app->window will contain the new window
 		// surface.
+		if(ctx.window != app->window)
+		{
+			ctx.window = app->window;
+			pthread_mutex_lock(&ctx.mutex);
+			ctx.view_w = ANativeWindow_getWidth(ctx.window);
+			ctx.view_h = ANativeWindow_getHeight(ctx.window);
+			pthread_mutex_unlock(&ctx.mutex);
+
+			if(!ctx.thread_running)
+			{
+				ctx.thread_running = true;
+				pthread_create(&ctx.thread, NULL, entrypoint_thread, NULL);
+			}
+		}
 		break;
 
 	case APP_CMD_TERM_WINDOW:
@@ -55,7 +78,9 @@ static void on_app_cmd(struct android_app * app, int32_t cmd)
 		// terminated.  Upon receiving this command, android_app->window still
 		// contains the existing window; after calling android_app_exec_cmd
 		// it will be set to NULL.
-		new_window = NULL;
+		pthread_mutex_lock(&ctx.mutex);
+		ctx.window = NULL;
+		pthread_mutex_unlock(&ctx.mutex);
 		break;
 
 	case APP_CMD_WINDOW_RESIZED:
@@ -114,6 +139,10 @@ static void on_app_cmd(struct android_app * app, int32_t cmd)
 		// allocate it with malloc and place it in android_app.savedState with
 		// the size in android_app.savedStateSize.  The will be freed for you
 		// later.
+
+		pthread_mutex_lock(&ctx.mutex);
+		entrypoint_might_unload();
+		pthread_mutex_unlock(&ctx.mutex);
 		break;
 
 	case APP_CMD_PAUSE:
@@ -184,11 +213,11 @@ int32_t on_input_event(struct android_app *_app, AInputEvent *_event)
 }
 #endif
 
-static void * entrypoint_thread(void * param)
+void * entrypoint_thread(void * param)
 {
-	// locking to main jvm thread is needed for fmod and other things
-	JNIEnv * jni_env = NULL;
-	(*ctx.app->activity->vm)->AttachCurrentThread(ctx.app->activity->vm, &jni_env, NULL);
+	JNIEnv * jni_env_entrypoint_thread = NULL;
+	(*ctx.app->activity->vm)->AttachCurrentThread(ctx.app->activity->vm, &jni_env_entrypoint_thread, NULL);
+	ctx.jni_env_entrypoint_thread = jni_env_entrypoint_thread;
 
 	if(entrypoint_init(ctx.argc, ctx.argv))
 	{
@@ -227,51 +256,56 @@ void android_main(struct android_app * app)
 {
 	const char * argv[1] = { "android.so" };
 	ctx.argc = 1;
-	ctx.argv = argv;
+	ctx.argv = (char**)argv;
 	ctx.app = app;
 
 	app->userData = &ctx;
-	app->onAppCmd = on_app_cmd;
-#ifdef ENTRYPOINT_PROVIDE_INPUT
-	app->onInputEvent = on_input_event;
-#endif
-	ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_FULLSCREEN | AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
+	ctx.app->onAppCmd = on_app_cmd;
+	#ifdef ENTRYPOINT_PROVIDE_INPUT
+	ctx.app->onInputEvent = on_input_event;
+	#endif
+
+	ANativeActivity_setWindowFlags(ctx.app->activity, AWINDOW_FLAG_FULLSCREEN | AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
+
+	JNIEnv * jni_env_main_thread = NULL;
+	(*ctx.app->activity->vm)->AttachCurrentThread(ctx.app->activity->vm, &jni_env_main_thread, NULL);
+	ctx.jni_env_main_thread = jni_env_main_thread;
+
+	{
+		JNIEnv * env = ctx.jni_env_main_thread;
+
+		jobject na_class = ctx.app->activity->clazz;
+		jclass acl = (*env)->GetObjectClass(env, na_class);
+		jmethodID get_class_loader = (*env)->GetMethodID(env, acl, "getClassLoader", "()Ljava/lang/ClassLoader;");
+		jobject cl_obj = (*env)->CallObjectMethod(env, na_class, get_class_loader);
+		ctx.j_class_loader = (void*)((*env)->NewWeakGlobalRef(env, cl_obj));
+
+		jclass class_loader = (*env)->FindClass(env, "java/lang/ClassLoader");
+		ctx.j_find_class_method_id = (void*)((*env)->GetMethodID(env, class_loader, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;"));
+	}
 
 	ENTRYPOINT_ANDROID_PREPARE_PARAMS;
 
 	pthread_mutex_init(&ctx.mutex, NULL);
 
-	bool had_window = false;
 	int poll_events = 0;
 	struct android_poll_source * poll_source = NULL;
-	while(!app->destroyRequested)
+	while(!ctx.app->destroyRequested)
 	{
 		// TODO do we want one or all events?
-		ALooper_pollAll(0, NULL, &poll_events, (void**)&poll_source);
+		ALooper_pollAll(-1, NULL, &poll_events, (void**)&poll_source);
 
 		if(poll_source)
-			poll_source->process(app, poll_source);
-
-		//pthread_mutex_lock(&ctx.mutex);
-		ctx.window = new_window;
-		if(ctx.window)
-		{
-			ctx.view_w = ANativeWindow_getWidth(ctx.window);
-			ctx.view_h = ANativeWindow_getHeight(ctx.window);
-		}
-		//pthread_mutex_unlock(&ctx.mutex);
-
-		if(!had_window && ctx.window)
-		{
-			pthread_create(&ctx.thread, NULL, entrypoint_thread, NULL);
-			had_window = true;
-		}
+			poll_source->process(ctx.app, poll_source);
 	}
 
 	ctx.flag_want_to_close = 1;
 	pthread_join(ctx.thread, NULL);
 
 	pthread_mutex_destroy(&ctx.mutex);
+
+	// TODO do we need this?
+	(*ctx.app->activity->vm)->DetachCurrentThread(ctx.app->activity->vm);
 
 	return;
 }
@@ -327,5 +361,65 @@ bool ep_kdown(int32_t key) {return false;}
 uint32_t ep_kchar() {return 0;}
 
 #endif
+// -----------------------------------------------------------------------------
+#ifdef ENTRYPOINT_PROVIDE_OPENURL
+
+void ep_openurl(const char * url)
+{
+	ep_jni_method_t r = ep_get_static_java_method("com/beardsvibe/EntrypointNativeActivity", "openURL", "(Ljava/lang/String;)V");
+	if(r.found)
+	{
+		JNIEnv * e = (JNIEnv*)r.env;
+
+		jstring j_str = (*e)->NewStringUTF(e, url);
+		(*e)->CallStaticVoidMethod(r.env, r.class_id, r.method_id, j_str);
+		(*e)->DeleteLocalRef(e, j_str);
+	}
+	ep_get_static_java_method_clear(r);
+}
+
+#endif
+// -----------------------------------------------------------------------------
+
+// jni helper is loosely based on cocos2d-x
+ep_jni_method_t ep_get_static_java_method(const char * class_name, const char * method_name, const char * param_code)
+{
+	ep_jni_method_t r = {0};
+	JNIEnv * env = ctx.jni_env_entrypoint_thread;
+	if(!class_name || !method_name || !param_code || !env)
+		return r;
+
+	jobject j_class_loader = (jobject)ctx.j_class_loader;
+	jmethodID j_find_class_method_id = (jmethodID)ctx.j_find_class_method_id;
+
+	jstring class_jstr = (*env)->NewStringUTF(env, class_name);
+	jclass class_id = (jclass)((*env)->CallObjectMethod(env, j_class_loader, j_find_class_method_id, class_jstr));
+	if(!class_id) {
+		(*env)->ExceptionClear(env);
+		(*env)->DeleteLocalRef(env, class_jstr);
+		return r;
+	}
+	(*env)->DeleteLocalRef(env, class_jstr);
+
+	jmethodID method_id = (*env)->GetStaticMethodID(env, class_id, method_name, param_code);
+	if(!method_id) {
+		(*env)->ExceptionClear(env);
+		return r;
+	}
+
+	r.found = true;
+	r.env = (void*)env;
+	r.class_id = (void*)class_id;
+	r.method_id = (void*)method_id;
+	return r;
+}
+
+void ep_get_static_java_method_clear(ep_jni_method_t method)
+{
+	if(!method.found)
+		return;
+
+	(*((JNIEnv*)method.env))->DeleteLocalRef(method.env, method.class_id);
+}
 
 #endif

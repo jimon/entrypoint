@@ -56,6 +56,11 @@ ep_size_t ep_size();
 // is current platform built with retina support
 bool ep_retina();
 
+// get UI margins in pixels, UI elements should not be placed with-in X pixels from screen size
+// this is needed for iPhone X and similar devices
+typedef struct ep_ui_margins_t {uint16_t l, t, r, b;} ep_ui_margins_t; // left, top, right, bottom
+ep_ui_margins_t ep_ui_margins();
+
 // -----------------------------------------------------------------------------
 
 #ifdef ENTRYPOINT_PROVIDE_TIME
@@ -136,6 +141,15 @@ uint32_t ep_kchar();
 // TODO iOS style keyboard input
 
 // TODO gamepad
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_PROVIDE_OPENURL
+
+// open url in native browser
+void ep_openurl(const char * url);
 
 #endif
 
@@ -248,9 +262,13 @@ struct entrypoint_ctx_t
 	#elif defined(__ANDROID__)
 		struct android_app * app;
 		ANativeWindow * window;
+		void * jni_env_entrypoint_thread;
+		void * jni_env_main_thread;
 		uint16_t view_w, view_h;
 		pthread_mutex_t mutex;
 		pthread_t thread;
+		void * j_class_loader; // needed for JNI
+		void * j_find_class_method_id;
 		union
 		{
 			uint8_t flags;
@@ -260,6 +278,7 @@ struct entrypoint_ctx_t
 				#ifdef ENTRYPOINT_PROVIDE_TIME
 				uint8_t flag_time_set: 1;
 				#endif
+				uint8_t thread_running: 1;
 			};
 		};
 		#ifdef ENTRYPOINT_PROVIDE_TIME

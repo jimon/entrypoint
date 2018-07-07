@@ -206,6 +206,12 @@ bool ep_retina()
 	return false; // TODO
 }
 
+ep_ui_margins_t ep_ui_margins()
+{
+	ep_ui_margins_t r = {0, 0, 0, 0};
+	return r;
+}
+
 // -----------------------------------------------------------------------------
 
 #ifdef ENTRYPOINT_WINDOWS_NEED_ARGS
@@ -549,3 +555,17 @@ uint32_t ep_kchar()
 }
 
 #endif
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_PROVIDE_OPENURL
+
+#include <Shellapi.h>
+
+void ep_openurl(const char * url)
+{
+	ShellExecute(0, 0, url, 0, 0 , SW_SHOW );
+}
+
+#endif
+

@@ -439,6 +439,12 @@ bool ep_retina()
 	#endif
 }
 
+ep_ui_margins_t ep_ui_margins()
+{
+	ep_ui_margins_t r = {0, 0, 0, 0};
+	return r;
+}
+
 // -----------------------------------------------------------------------------
 
 static bool _infocus() {return [NSApp keyWindow] == ctx.window;}
@@ -600,6 +606,17 @@ uint32_t ep_kchar()
 	uint32_t k = ctx.last_char;
 	ctx.last_char = 0;
 	return k;
+}
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+#ifdef ENTRYPOINT_PROVIDE_OPENURL
+
+void ep_openurl(const char * url)
+{
+	// TODO
 }
 
 #endif
